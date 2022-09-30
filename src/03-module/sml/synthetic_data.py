@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+# coding: utf-8
+# %%
+# pip install faker
+
 from collections import defaultdict
 from faker import Faker
 import pandas as pd
@@ -22,15 +27,18 @@ def set_random_seed(seed: int):
 
 set_random_seed(12345)
 
+
 TOTAL_UNIQUE_USERS = 1000
 TOTAL_UNIQUE_TRANSACTIONS = 54000
 CASH_WITHRAWAL_CARDS_TOTAL = 2000 
 TOTAL_UNIQUE_CASH_WITHDRAWALS = 1200 
 ATM_WITHRAWAL_SEQ_LENGTH = [3, 4, 5, 6, 7, 8, 9, 10]
 NORMAL_ATM_RADIUS = 0.01
+
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 END_DATE = datetime.datetime.now().strftime(DATE_FORMAT) 
 START_DATE = (datetime.datetime.now() - datetime.timedelta(days=30*6)).strftime(DATE_FORMAT) 
+
 
 AMOUNT_DISTRIBUTION_PERCENTAGES = {
                                    0.05: (0.01, 1.01), 
@@ -67,6 +75,8 @@ SUSCEPTIBLE_CARDS_DISTRIBUTION_BY_AGE = {
                                    0.40: (74, 84),
                                    0.40: (84, 100),
                                   }
+
+
 
 def generate_unique_credit_card_numbers(n: int) -> pd.Series:
     """."""    
@@ -109,11 +119,9 @@ def generate_df_with_profiles(credit_cards : list)-> pd.DataFrame:
 
     # Cast the columns to the correct Pandas DType        
     profiles_df = pd.DataFrame.from_records(profiles)
-    profiles_df['birthdate'] = pd.to_datetime(profiles_df['birthdate'])
-    profiles_df['cc_num'] = pd.to_numeric(profiles_df['cc_num'])
-    profiles_df['gender'] = profiles_df['sex']
-    profiles_df.drop(['sex'], axis=1, inplace=True) 
-    
+    profiles_df['birthdate']= pd.to_datetime(profiles_df['birthdate'])
+    profiles_df['cc_num']= pd.to_numeric(profiles_df['cc_num'])
+
     return profiles_df
 
 #  pyasset - assert len(timestamps) == TOTAL_UNIQUE_TRANSACTIONS
@@ -185,11 +193,11 @@ def generate_transactions(credit_card_numbers: list, timestamps: list, categorie
                            )
     return transactions
 
-def generate_cash_amounts(total_unique_withdrawals: int) -> list:
+def generate_cash_amounts() -> list:
     """."""    
     cash_amounts = []
     for percentage, span in AMOUNT_DISTRIBUTION_PERCENTAGES.items():
-        n = int(total_unique_withdrawals * percentage)
+        n = int(TOTAL_UNIQUE_CASH_WITHDRAWALS * percentage)
         start, end = span
         for _ in range(n):
             cash_amounts.append(get_random_transaction_amount(start, end+1))
@@ -233,7 +241,7 @@ def generate_atm_withdrawal(credit_card_number: str, cash_amounts: list, length:
     longitude = point_of_tr[1]
     city = point_of_tr[2]
     for _ in range(length):
-        current = timestamp + datetime.timedelta(hours=delta)
+        current = timestamp - datetime.timedelta(hours=delta)
         if radius is not None:
             latitude = faker.coordinate(latitude, radius) 
             longitude = faker.coordinate(longitude, radius)
@@ -353,8 +361,10 @@ def update_normal_atm_withdrawals(fraudulent_atm_tr_indxs :list, normal_atm_with
         fraudulent_atm_location = faker.location_on_land()
         while fraudulent_atm_location[3] == 'US':
             fraudulent_atm_location = faker.location_on_land()
+            
         fraudulent_atm_tr['datetime'] = (datetime.datetime.strptime(pre_fraudulent_atm_tr['datetime'],
                 DATE_FORMAT) + datetime.timedelta(hours=delta)).strftime(DATE_FORMAT)
+        
         fraudulent_atm_tr['latitude'] = fraudulent_atm_location[0]
         fraudulent_atm_tr['longitude'] = fraudulent_atm_location[1]
         fraudulent_atm_tr['city'] = fraudulent_atm_location[2]
@@ -379,37 +389,35 @@ def create_credit_cards_as_df(credit_cards: list) -> pd.DataFrame:
     df['cc_num']= pd.to_numeric(df['cc_num'])
     return df
 
-def create_transactions_as_df(credit_cards: list, atm_only: bool) -> (pd.DataFrame, pd.DataFrame):
+def create_profiles_as_df(credit_cards: list) -> pd.DataFrame:
     """."""
-    
+    profiles_df = generate_df_with_profiles(credit_cards)
+    return profiles_df
+
+def create_transactions_as_df(credit_cards: list) -> pd.DataFrame:
+    """."""
     timestamps = generate_timestamps(TOTAL_UNIQUE_TRANSACTIONS)
     amounts = generate_amounts()
+    categories = generate_categories(amounts)
     cc_df = create_credit_cards_as_df(credit_cards)    
-    cash_amounts = generate_cash_amounts(TOTAL_UNIQUE_CASH_WITHDRAWALS if atm_only else TOTAL_UNIQUE_TRANSACTIONS)
+    transactions = generate_transactions(cc_df['cc_num'], timestamps, categories)
+    cash_amounts = generate_cash_amounts()
+    chains = generate_chains()
     susceptible_cards = generate_susceptible_cards(credit_cards)
     
-    if not atm_only:
-        categories = generate_categories(amounts)
-        transactions = generate_transactions(cc_df['cc_num'], timestamps, categories)
-        chains = generate_chains()
-        update_transactions(transactions, chains)
-    else:
-        transactions = []
-    
     normal_atm_withdrawals = generate_normal_atm_withdrawals(cash_amounts, susceptible_cards)
+    update_transactions(transactions, chains)
     fraudulent_atm_tr_indxs = generate_fraudulent_atm_tr_indxs(normal_atm_withdrawals)
     update_normal_atm_withdrawals(fraudulent_atm_tr_indxs, normal_atm_withdrawals, cash_amounts)
-
+    
     transactions_df = transactions_as_dataframe(transactions, normal_atm_withdrawals)
-                                
+    
     # Cast the columns to the correct Pandas DType
     transactions_df['cc_num'] = pd.to_numeric(transactions_df['cc_num'])
     transactions_df['longitude'] = pd.to_numeric(transactions_df['longitude'])
     transactions_df['latitude'] = pd.to_numeric(transactions_df['latitude'])
     transactions_df['datetime']= pd.to_datetime(transactions_df['datetime'])
-    if atm_only:
-        transactions_df.drop(['category', 'city', 'country'], axis=1, inplace=True)
-    
-    labels = transactions_df[['tid', 'cc_num', 'datetime', 'fraud_label']]
-    transactions_df.drop(['fraud_label'], axis=1, inplace=True) 
-    return transactions_df, labels
+
+    fraud_labels = transactions_df[["tid", "cc_num", "datetime", "fraud_label"]]
+    transactions_df = transactions_df.drop(columns=["fraud_label"])
+    return transactions_df, fraud_labels
