@@ -11,7 +11,8 @@ def card_owner_age(trans_df : pd.DataFrame, profiles_df : pd.DataFrame)-> pd.Dat
     """
     age_df = trans_df.merge(profiles_df, on="cc_num", how="left")
     trans_df["age_at_transaction"] = (age_df["datetime"] - age_df["birthdate"]) / np.timedelta64(1, "Y")
-    return trans_df
+    profiles_df = age_df[["name", "sex", "mail", "birthdate", "City", "Country", "cc_num", "datetime", "month"]]
+    return trans_df, profiles_df
 
 def expiry_days(trans_df : pd.DataFrame, credit_cards_df : pd.DataFrame)-> pd.DataFrame:
     """Used only in feature pipelines (not online inference). 
@@ -109,7 +110,7 @@ def activity_level(trans_df : pd.DataFrame, lag: int)-> pd.DataFrame:
     # Convert time_delta from seconds to days
     trans_df[f"time_delta_t_minus_{lag}"] = trans_df[f"time_delta_t_minus_{lag}"].map(lambda x: time_delta_to_days(x))
     trans_df[f"time_delta_t_minus_{lag}"] = trans_df[f"time_delta_t_minus_{lag}"].fillna(0)    
-    trans_df = trans_df[["tid","datetime","cc_num","category", "amount", "city", "country", "age_at_transaction"\
+    trans_df = trans_df[["tid","datetime", "month", "cc_num","category", "amount", "city", "country", "age_at_transaction"\
                          ,"days_until_card_expires", f"loc_delta_t_minus_{lag}", f"time_delta_t_minus_{lag}"]]
     # Convert datetime to timestamp, because of a problem with UTC. Hopsworks assumes you use UTC, but if you don't use UTC
     # on your Python environment, the datetime will be wrong. With timestamps, we don't have the UTC problems when performing PIT Joins.
@@ -154,6 +155,6 @@ def aggregate_activity_by_hour(trans_df : pd.DataFrame, window_len)-> pd.DataFra
     df_loc_delta_mavg = df_loc_delta_mavg.sort_index()
     window_aggs_df = window_aggs_df.merge(df_loc_delta_mavg,left_index=True, right_index=True)
 
-    window_aggs_df = window_aggs_df.merge(trans_df[["cc_num", "datetime"]].sort_index(),left_index=True, right_index=True)
+    window_aggs_df = window_aggs_df.merge(trans_df[["cc_num", "datetime", "month"]].sort_index(),left_index=True, right_index=True)
  
     return window_aggs_df

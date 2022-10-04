@@ -77,6 +77,8 @@ SUSCEPTIBLE_CARDS_DISTRIBUTION_BY_AGE = {
                                   }
 
 
+def date_to_year_month(date_obj: datetime)-> datetime.date:
+    return date_obj.strftime('%Y-%m')
 
 def generate_unique_credit_card_numbers(n: int) -> pd.Series:
     """."""    
@@ -411,6 +413,8 @@ def create_transactions_as_df(credit_cards: list) -> pd.DataFrame:
     update_normal_atm_withdrawals(fraudulent_atm_tr_indxs, normal_atm_withdrawals, cash_amounts)
     
     transactions_df = transactions_as_dataframe(transactions, normal_atm_withdrawals)
+    transactions_df["datetime"] = transactions_df.datetime.map(lambda x: datetime.datetime.strptime(x, DATE_FORMAT))
+    transactions_df["month"] = transactions_df.datetime.map(lambda x: date_to_year_month(x))
     
     # Cast the columns to the correct Pandas DType
     transactions_df['cc_num'] = pd.to_numeric(transactions_df['cc_num'])
@@ -418,6 +422,6 @@ def create_transactions_as_df(credit_cards: list) -> pd.DataFrame:
     transactions_df['latitude'] = pd.to_numeric(transactions_df['latitude'])
     transactions_df['datetime']= pd.to_datetime(transactions_df['datetime'])
 
-    fraud_labels = transactions_df[["tid", "cc_num", "datetime", "fraud_label"]]
+    fraud_labels = transactions_df[["tid", "cc_num", "datetime", "month", "fraud_label"]]
     transactions_df = transactions_df.drop(columns=["fraud_label"])
     return transactions_df, fraud_labels
