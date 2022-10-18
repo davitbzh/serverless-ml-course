@@ -28,9 +28,6 @@ long = 0
 
 warnings.filterwarnings("ignore")
 
-import os
-os.environ['HOPSWORKS_API_KEY'] = "qAR75I4fzKkB4k1v.pKPbvCKL9qcsHQvrXSEzo47dGmfbVXgFEgwMFtAPonjMn36ym6rJY9CeGIEYjWgq"
-
 project = hopsworks.login()
 fs = project.get_feature_store()
 
