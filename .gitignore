@@ -141,3 +141,4 @@ miniconda/
 src/03-module/model.pkl
 src/03-module/predict_example.py
 src/03-module/xgboost.pkl
+.idea/

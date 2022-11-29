@@ -51,12 +51,12 @@ def haversine_distance(long: float, lat: float, prev_long: float, prev_lat: floa
         lat = radians(lat)
 
     if isinstance(long, pd.Series):
-        prev_long = prev_long.map(lambda x: (x))
+        prev_long = prev_long.map(lambda x: radians(x))
     else:
         prev_long = radians(prev_long)
 
     if isinstance(lat, pd.Series):
-        prev_lat = prev_lat.map(lambda x: (x))
+        prev_lat = prev_lat.map(lambda x: radians(x))
     else:
         prev_lat = radians(prev_lat)
     
