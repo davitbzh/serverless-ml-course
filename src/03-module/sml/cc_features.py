@@ -41,12 +41,12 @@ def haversine_distance(long: float, lat: float, prev_long: float, prev_lat: floa
 #         raise Exception('latitude cannot be less than -90')
 
     if isinstance(long, pd.Series):
-        long = long.map(lambda x: (x))
+        long = long.map(lambda x: radians(x))
     else:
         long = radians(long)
     
     if isinstance(lat, pd.Series):
-        lat = lat.map(lambda x: (x))
+        lat = lat.map(lambda x: radians(x))
     else:
         lat = radians(lat)
 
